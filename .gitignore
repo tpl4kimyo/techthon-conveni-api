@@ -1,0 +1,4 @@
+Pipfile
+Pipfile.lock
+techthonweb/.vscode/launch.json
+techthonweb/db.sqlite3
