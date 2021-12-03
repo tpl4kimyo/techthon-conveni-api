@@ -52,12 +52,12 @@ def stock_reg_api(request):
             return JsonResponse({
                 'status_code': 201,
                 'method': 'POST'
-            }, status=201)
+            })
         else:
             return JsonResponse({
                 'status_code': 400,
                 'method': 'POST'
-            }, status=400)
+            })
 
 @csrf_exempt
 def stock_detail_api(request, pk):
