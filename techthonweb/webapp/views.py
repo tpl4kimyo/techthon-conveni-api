@@ -6,6 +6,8 @@ from rest_framework.decorators import action
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
+from django.db.models import Q
+
 
 
 from webapp.models import StockManageModel
@@ -83,6 +85,98 @@ def stock_detail_api(request, pk):
             }
         }
         return JsonResponse(result, status=200)
+
+# /stock/list
+@csrf_exempt
+def stock_list_api(request):
+
+    if request.method == "GET":
+        min_count = request.GET.get('min_count')
+        max_count = request.GET.get('max_count')
+        on_sale = request.GET.get('on_sale')
+
+        min_count_q = Q()
+        max_count_q = Q()
+        on_sale_q = Q()
+        if min_count:
+            min_count_q = Q(count__lte=min_count)
+        if max_count:
+            max_count_q = Q(count__gte=max_count)
+        if on_sale:
+            on_sale_q = Q(on_sale=on_sale)
+        
+        stocks = StockManageModel.objects.filter(min_count_q & max_count_q & on_sale_q)
+        items = []
+        for stock in stocks:
+            item = {
+                'id':stock.id,
+                'name':stock.name,
+                'price':stock.price,
+                'on_sale':stock.on_sale,
+                'count':stock.count
+            }
+
+            items.append(item)
+        
+        result = {
+            'status_code':200,
+            'method':'GET',
+            'item':items
+        }
+
+        return JsonResponse(result)
+
+@csrf_exempt
+def stock_update_api(request, pk):
+
+    if request.method == "PUT":
+        try:
+            stock = StockManageModel.objects.get(id=pk)
+        except StockManageModel.DoesNotExist:
+            return JsonResponse({
+                'status_code': 404,
+                'method': 'PUT'
+            })
+        
+        data = JSONParser().parse(request)
+        if 'name' in data:
+            stock.name = data['name']
+        if 'price' in data:
+            stock.price = data.price
+        if 'on_sale' in data:
+            stock.on_sale = data.on_sale
+        if 'count' in data:
+            stock.count = data.count
+        
+        stock.save()
+        
+        result = {
+            'status_code':200,
+            'method':'PUT',
+        }
+        return JsonResponse(result, status=200)
+
+@csrf_exempt
+def stock_delete_api(request, pk):
+
+    if request.method == "DELETE":
+        try:
+            stock = StockManageModel.objects.get(id=pk)
+        except StockManageModel.DoesNotExist:
+            return JsonResponse({
+                'status_code': 404,
+                'method': 'DELETE'
+            })
+        
+        stock.delete()
+        
+        result = {
+            'status_code':200,
+            'method':'DELETE',
+        }
+        return JsonResponse(result, status=200)
+
+
 
 class StockManageViewSet(viewsets.ModelViewSet):
     queryset = StockManageModel.objects.all()
