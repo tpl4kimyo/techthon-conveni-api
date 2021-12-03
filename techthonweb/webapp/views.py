@@ -123,7 +123,7 @@ def stock_list_api(request):
         result = {
             'status_code':200,
             'method':'GET',
-            'item':items
+            'items':items
         }
 
         return JsonResponse(result)
