@@ -99,11 +99,13 @@ def stock_list_api(request):
         max_count_q = Q()
         on_sale_q = Q()
         if min_count:
-            min_count_q = Q(count__lte=min_count)
+            min_count_q = Q(count__gte=min_count)
         if max_count:
-            max_count_q = Q(count__gte=max_count)
-        if on_sale:
-            on_sale_q = Q(on_sale=on_sale)
+            max_count_q = Q(count__lte=max_count)
+        if on_sale == "false":
+            on_sale_q = Q(on_sale=False)
+        else:
+            on_sale_q = Q(on_sale=True)
         
         stocks = StockManageModel.objects.filter(min_count_q & max_count_q & on_sale_q)
         items = []
@@ -142,11 +144,11 @@ def stock_update_api(request, pk):
         if 'name' in data:
             stock.name = data['name']
         if 'price' in data:
-            stock.price = data.price
+            stock.price = data['price']
         if 'on_sale' in data:
-            stock.on_sale = data.on_sale
+            stock.on_sale = False if data['on_sale'] == "false" else True
         if 'count' in data:
-            stock.count = data.count
+            stock.count = data['count']
         
         stock.save()
         
