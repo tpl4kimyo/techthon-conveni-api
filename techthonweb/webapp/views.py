@@ -104,7 +104,7 @@ def stock_list_api(request):
             max_count_q = Q(count__lte=max_count)
         if on_sale == "false":
             on_sale_q = Q(on_sale=False)
-        else:
+        elif on_sale == "true":
             on_sale_q = Q(on_sale=True)
         
         stocks = StockManageModel.objects.filter(min_count_q & max_count_q & on_sale_q)
