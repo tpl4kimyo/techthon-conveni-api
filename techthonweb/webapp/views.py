@@ -33,7 +33,7 @@ def init_api(request):
     if request.method == "PUT":
 
         StockManageModel.objects.all().delete()
-        smm = StockManageModel(id = 0, name = 'pen', price = 100, on_sale = True, count = 100)
+        smm = StockManageModel(id = 1, name = 'pen', price = 100, on_sale = True, count = 100)
         smm.save()
 
         return JsonResponse({
@@ -69,7 +69,7 @@ def stock_detail_api(request, pk):
             return JsonResponse({
                 'status_code': 404,
                 'method': 'GET'
-            }, status=404)
+            })
         
         result = {
             'status_code':200,
