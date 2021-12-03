@@ -196,7 +196,7 @@ def stock_create_multiple_api(request):
         try:
             StockManageModel.objects.bulk_create(objs)
             return JsonResponse({
-                'status_code': 200,
+                'status_code': 201,
                 'method': 'POST'
             })
         except:
