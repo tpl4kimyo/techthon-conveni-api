@@ -1,3 +1,6 @@
+import datetime
+from django.utils.timezone import make_aware
+
 from django.http.response import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -7,10 +10,10 @@ from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser
 from django.db.models import Q
+from django.db import transaction  # 追加
 
 
-
-from webapp.models import StockManageModel
+from webapp.models import PurchaseItemModel, PurchaseModel, StockManageModel
 from webapp.serializers import StockManageSerializer
 
 # Create your views here.
@@ -35,6 +38,7 @@ def init_api(request):
     if request.method == "PUT":
 
         StockManageModel.objects.all().delete()
+        PurchaseItemModel.objects.all().delete()
         smm = StockManageModel(id = 1, name = 'pen', price = 100, on_sale = True, count = 100)
         smm.save()
 
@@ -178,8 +182,97 @@ def stock_delete_api(request, pk):
         }
         return JsonResponse(result, status=200)
 
+# /stock/create/multiple
+@csrf_exempt
+def stock_create_multiple_api(request):
 
+    if request.method == "POST":
+        data = JSONParser().parse(request)
 
-class StockManageViewSet(viewsets.ModelViewSet):
-    queryset = StockManageModel.objects.all()
-    serializer_class = StockManageSerializer
+        objs = []
+        for d in data['items']:
+            objs.append(StockManageModel(id=d['id'], name=d['name'],price=d['price'],on_sale=False if d['on_sale'] == "false" else True,count=d['count']))
+        
+        try:
+            StockManageModel.objects.bulk_create(objs)
+            return JsonResponse({
+                'status_code': 200,
+                'method': 'POST'
+            })
+        except:
+            return JsonResponse({
+                'status_code': 400,
+                'method': 'POST'
+            })
+
+# /purchase/detail/{id}
+@csrf_exempt
+def purchase_detail_api(request, pk):
+
+    if request.method == "GET":
+        try:
+            purchaseItem = PurchaseItemModel.objects.filter(purchase_id=pk)
+        except PurchaseItemModel.DoesNotExist:
+            return JsonResponse({
+                'status_code': 404,
+                'method': 'GET'
+            })
+        
+        items = []
+        for item in purchaseItem:
+            items.append({
+                'stock_id': item.stock_id.id,
+                'name': item.stock_id.name,
+                'price': item.price,
+                'bought_count': item.bought_count
+            })
+
+        result = {
+            'status_code':200,
+            'method':'GET',
+            'purchase': {
+                'id': pk,
+                'bought_at': purchaseItem[0].purchase_id.bought_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                'staff_name': purchaseItem[0].purchase_id.staff_name,
+                'items': items
+            }
+        }
+        return JsonResponse(result, status=200)
+
+# /purchase/create
+@csrf_exempt
+def purchase_create_api(request):
+
+    if request.method == "POST":
+        data = JSONParser().parse(request)
+
+        with transaction.atomic():
+            try:
+                purchase = PurchaseModel(id=data['id'], bought_at=make_aware(datetime.datetime.strptime(data['bought_at'], "%Y-%m-%dT%H:%M:%S")), staff_name=data['staff_name'])
+                purchase.save()
+            except:
+                return JsonResponse({
+                    'status_code': 400,
+                    'method': 'POST'
+                })
+
+            for item in data['items']:
+                stock = StockManageModel.objects.get(id=item['stock_id'])
+                # 在庫計算
+                zaiko = stock.count - item['bought_count']
+                if zaiko >= 0:
+                    stock.count = zaiko
+                    stock.save()
+                else:
+                    return JsonResponse({
+                        'status_code': 400,
+                        'method': 'POST'
+                    })
+                
+                purchase_item = PurchaseItemModel(purchase_id=purchase, stock_id=stock, price=stock.price, bought_count=item['bought_count'])
+                purchase_item.save()
+        
+        return JsonResponse({
+            'status_code': 200,
+            'method': 'POST'
+        })
